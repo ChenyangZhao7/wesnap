@@ -30,6 +30,7 @@ TPM_RIGHTBUTTON = 0x0002
 TPM_RETURNCMD = 0x0100
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
+shell32 = ctypes.WinDLL("shell32", use_last_error=True)
 
 
 class NOTIFYICONDATAW(ctypes.Structure):
@@ -50,8 +51,8 @@ class NOTIFYICONDATAW(ctypes.Structure):
     ]
 
 
-user32.Shell_NotifyIconW.argtypes = [wt.DWORD, ctypes.POINTER(NOTIFYICONDATAW)]
-user32.Shell_NotifyIconW.restype = wt.BOOL
+shell32.Shell_NotifyIconW.argtypes = [wt.DWORD, ctypes.POINTER(NOTIFYICONDATAW)]
+shell32.Shell_NotifyIconW.restype = wt.BOOL
 user32.LoadImageW.argtypes = [wt.HINSTANCE, wt.LPCWSTR, wt.UINT, ctypes.c_int,
                               ctypes.c_int, wt.UINT]
 user32.LoadImageW.restype = wt.HANDLE
@@ -109,14 +110,14 @@ class TrayIcon:
 
     def show(self) -> None:
         def _add():
-            self._added = bool(user32.Shell_NotifyIconW(
+            self._added = bool(shell32.Shell_NotifyIconW(
                 NIM_ADD, ctypes.byref(self._data(NIF_MESSAGE | NIF_ICON | NIF_TIP))))
 
         self.pump.call_on_thread(_add)
 
     def hide(self) -> None:
         def _delete():
-            user32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self._data(0)))
+            shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self._data(0)))
             self._added = False
 
         self.pump.call_on_thread(_delete)
@@ -126,7 +127,7 @@ class TrayIcon:
 
         def _modify():
             if self._added:
-                user32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self._data(NIF_TIP)))
+                shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self._data(NIF_TIP)))
 
         self.pump.call_on_thread(_modify)
 
@@ -138,7 +139,7 @@ class TrayIcon:
             data.szInfo = message[:255]
             data.szInfoTitle = title[:63]
             data.dwInfoFlags = NIIF_INFO
-            user32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(data))
+            shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(data))
 
         self.pump.call_on_thread(_notify)
 
