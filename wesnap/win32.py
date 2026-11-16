@@ -10,6 +10,7 @@ from .geometry import Rect
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 gdi32 = ctypes.WinDLL("gdi32", use_last_error=True)
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
 SM_XVIRTUALSCREEN = 76
 SM_YVIRTUALSCREEN = 77
@@ -129,3 +130,33 @@ def capture_region_bytes(rect: Rect) -> bytes:
         gdi32.DeleteObject(bmp)
         gdi32.DeleteDC(mem)
         user32.ReleaseDC(None, screen)
+
+
+kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wt.BOOL, wt.LPCWSTR]
+kernel32.CreateMutexW.restype = wt.HANDLE
+kernel32.CloseHandle.argtypes = [wt.HANDLE]
+kernel32.CloseHandle.restype = wt.BOOL
+
+ERROR_ALREADY_EXISTS = 183
+_mutexes: list[int] = []
+
+
+def set_dpi_aware() -> None:
+    """Opt the process into per-monitor DPI awareness (physical pixels)."""
+    try:
+        user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+        user32.SetProcessDpiAwarenessContext.restype = wt.BOOL
+        user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except (AttributeError, OSError):
+        pass
+
+
+def acquire_single_instance(name: str = r"Local\WeSnap") -> bool:
+    handle = kernel32.CreateMutexW(None, True, name)
+    if not handle:
+        return False
+    if ctypes.get_last_error() == ERROR_ALREADY_EXISTS:
+        kernel32.CloseHandle(handle)
+        return False
+    _mutexes.append(handle)
+    return True
