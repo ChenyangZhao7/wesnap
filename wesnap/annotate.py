@@ -32,6 +32,20 @@ class Annotation:
         raise NotImplementedError
 
 
+def arrow_head(start: tuple[int, int], end: tuple[int, int],
+               width: int) -> list[tuple[int, int]]:
+    angle = math.atan2(end[1] - start[1], end[0] - start[0])
+    length = 10 + width * 3
+    spread = 0.45
+    return [
+        end,
+        (int(end[0] - length * math.cos(angle - spread)),
+         int(end[1] - length * math.sin(angle - spread))),
+        (int(end[0] - length * math.cos(angle + spread)),
+         int(end[1] - length * math.sin(angle + spread))),
+    ]
+
+
 @dataclass
 class RectAnn(Annotation):
     rect: Rect
@@ -74,17 +88,8 @@ class ArrowAnn(Annotation):
     def render(self, canvas: Image.Image) -> None:
         draw = ImageDraw.Draw(canvas)
         draw.line([self.start, self.end], fill=self.color, width=self.width)
-        angle = math.atan2(self.end[1] - self.start[1], self.end[0] - self.start[0])
-        length = 10 + self.width * 3
-        spread = 0.45
-        head = [
-            self.end,
-            (int(self.end[0] - length * math.cos(angle - spread)),
-             int(self.end[1] - length * math.sin(angle - spread))),
-            (int(self.end[0] - length * math.cos(angle + spread)),
-             int(self.end[1] - length * math.sin(angle + spread))),
-        ]
-        draw.polygon(head, fill=self.color)
+        draw.polygon(arrow_head(self.start, self.end, self.width),
+                     fill=self.color)
 
     def bounds(self) -> Rect:
         return Rect(min(self.start[0], self.end[0]), min(self.start[1], self.end[1]),

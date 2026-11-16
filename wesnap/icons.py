@@ -23,7 +23,7 @@ def draw_icon(canvas, name: str, rect, color: str = "#ffffff") -> None:
                               fill=color, outline=color)
     elif name == "text":
         canvas.create_text(cx, cy, text="A", fill=color,
-                           font=(FONT, max(10, int(rect.h * 0.45)), "bold"))
+                           font=(FONT, -max(10, int(rect.h * 0.45)), "bold"))
     elif name == "mosaic":
         step = (x1 - x0) / 3
         for row in range(3):
@@ -61,4 +61,4 @@ def draw_icon(canvas, name: str, rect, color: str = "#ffffff") -> None:
         canvas.create_line(x1, y0, x0, y1, fill=color, width=2)
     else:
         canvas.create_text(cx, cy, text="?", fill=color,
-                           font=(FONT, max(10, int(rect.h * 0.45)), "bold"))
+                           font=(FONT, -max(10, int(rect.h * 0.45)), "bold"))

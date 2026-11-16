@@ -1,7 +1,10 @@
 """Tray icon built directly on Shell_NotifyIcon."""
 
 import ctypes
+import logging
 import os
+import threading
+import time
 from ctypes import wintypes as wt
 
 WM_TRAY = 0x8001
@@ -31,6 +34,7 @@ TPM_RETURNCMD = 0x0100
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+logger = logging.getLogger("wesnap")
 
 
 class NOTIFYICONDATAW(ctypes.Structure):
@@ -53,6 +57,10 @@ class NOTIFYICONDATAW(ctypes.Structure):
 
 shell32.Shell_NotifyIconW.argtypes = [wt.DWORD, ctypes.POINTER(NOTIFYICONDATAW)]
 shell32.Shell_NotifyIconW.restype = wt.BOOL
+
+
+def _shell_notify(flags: int, data: NOTIFYICONDATAW) -> bool:
+    return bool(shell32.Shell_NotifyIconW(flags, ctypes.byref(data)))
 user32.LoadImageW.argtypes = [wt.HINSTANCE, wt.LPCWSTR, wt.UINT, ctypes.c_int,
                               ctypes.c_int, wt.UINT]
 user32.LoadImageW.restype = wt.HANDLE
@@ -86,6 +94,7 @@ class TrayIcon:
         self._icon = self._load_icon()
         self._commands: dict[int, object] = {}
         self._added = False
+        self._last_click = 0.0
         pump.add_handler(WM_TRAY, self._on_tray)
         pump.add_handler(WM_COMMAND, self._on_command)
 
@@ -108,16 +117,28 @@ class TrayIcon:
         data.szTip = self.tooltip[:127]
         return data
 
+    @property
+    def added(self) -> bool:
+        return self._added
+
     def show(self) -> None:
+        done = threading.Event()
+
         def _add():
-            self._added = bool(shell32.Shell_NotifyIconW(
-                NIM_ADD, ctypes.byref(self._data(NIF_MESSAGE | NIF_ICON | NIF_TIP))))
+            try:
+                self._added = _shell_notify(
+                    NIM_ADD, self._data(NIF_MESSAGE | NIF_ICON | NIF_TIP))
+                if not self._added:
+                    logger.warning("Shell_NotifyIcon NIM_ADD failed")
+            finally:
+                done.set()
 
         self.pump.call_on_thread(_add)
+        done.wait(2.0)
 
     def hide(self) -> None:
         def _delete():
-            shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self._data(0)))
+            _shell_notify(NIM_DELETE, self._data(0))
             self._added = False
 
         self.pump.call_on_thread(_delete)
@@ -127,7 +148,7 @@ class TrayIcon:
 
         def _modify():
             if self._added:
-                shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self._data(NIF_TIP)))
+                _shell_notify(NIM_MODIFY, self._data(NIF_TIP))
 
         self.pump.call_on_thread(_modify)
 
@@ -139,13 +160,17 @@ class TrayIcon:
             data.szInfo = message[:255]
             data.szInfoTitle = title[:63]
             data.dwInfoFlags = NIIF_INFO
-            shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(data))
+            _shell_notify(NIM_MODIFY, data)
 
         self.pump.call_on_thread(_notify)
 
     def _on_tray(self, wparam, lparam) -> None:
         event = lparam & 0xFFFF
+        now = time.monotonic()
         if event in (WM_LBUTTONUP, WM_LBUTTONDBLCLK):
+            if now - self._last_click < 0.4:
+                return
+            self._last_click = now
             self.pump.post(self.on_left_click)
         elif event == WM_RBUTTONUP:
             self._show_menu()

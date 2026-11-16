@@ -1,15 +1,17 @@
 """Full-screen selection overlay with annotations and a floating toolbar."""
 
+import time
 import tkinter as tk
 
 from PIL import ImageEnhance, ImageTk
 
 from . import win32
 from .annotate import (ArrowAnn, EllipseAnn, MosaicAnn, PenAnn, RectAnn,
-                       TextAnn, UndoStack, render)
+                       TextAnn, UndoStack, arrow_head, render)
 from .capture import Capture, rect_to_image_box
 from .geometry import Rect
 from .icons import draw_icon
+from .longshot import PANEL_SIZE, place_panel
 from .selection import SelectionController
 from .toolbar import layout_toolbar
 
@@ -22,6 +24,10 @@ HANDLE_FILL = "#ffffff"
 
 def _hex(color: tuple[int, int, int]) -> str:
     return "#%02x%02x%02x" % color
+
+
+def badge_text(selection: Rect) -> str:
+    return f"{selection.w} × {selection.h}  ({selection.x}, {selection.y})"
 
 
 class ScreenshotOverlay:
@@ -43,9 +49,12 @@ class ScreenshotOverlay:
         self._start = (0, 0)
         self._status = ""
         self._toolbar: dict[str, Rect] | None = None
+        self._longshot_enabled = False
         self._text_entry: tk.Entry | None = None
         self._text_pos: tuple[int, int] | None = None
         self._photos = []
+        self._last_click_time = 0.0
+        self._last_click_pos = (0, 0)
 
         self.monitors = win32.enum_monitors()
         cursor = win32.get_cursor_pos()
@@ -61,7 +70,8 @@ class ScreenshotOverlay:
             top.geometry(f"{monitor.w}x{monitor.h}+{monitor.x}+{monitor.y}")
             top.withdraw()
             canvas = tk.Canvas(top, width=monitor.w, height=monitor.h,
-                               highlightthickness=0, bd=0, bg="black")
+                               highlightthickness=0, bd=0, bg="black",
+                               cursor="crosshair")
             canvas.pack(fill="both", expand=True)
             box = rect_to_image_box(monitor, capture.bounds)
             original = capture.image.crop(box)
@@ -138,6 +148,7 @@ class ScreenshotOverlay:
     def _on_press(self, event, monitor: Rect) -> None:
         if self._closed or monitor != self.active:
             return
+        self._commit_text_entry()
         pt = (monitor.x + event.x, monitor.y + event.y)
         selection = self._controller.rect
         if selection is not None and self._toolbar:
@@ -145,6 +156,9 @@ class ScreenshotOverlay:
                 if rect.contains(*pt):
                     self._on_button(name)
                     return
+        self._maybe_finish_double_click(pt, selection)
+        if self._closed:
+            return
         if selection is not None and self._tool in TOOL_BUTTONS:
             if selection.contains(*pt):
                 if self._tool == "text":
@@ -157,6 +171,22 @@ class ScreenshotOverlay:
             self._undo.clear()
             self._status = ""
         self._render()
+
+    def _maybe_finish_double_click(self, pt, selection) -> bool:
+        if selection is None or self._tool is not None:
+            self._last_click_time = time.monotonic()
+            self._last_click_pos = pt
+            return False
+        now = time.monotonic()
+        if (now - self._last_click_time < 0.4
+                and abs(pt[0] - self._last_click_pos[0]) <= 4
+                and abs(pt[1] - self._last_click_pos[1]) <= 4):
+            self._last_click_time = 0.0
+            self._finish()
+            return True
+        self._last_click_time = now
+        self._last_click_pos = pt
+        return False
 
     def _on_motion(self, event, monitor: Rect) -> None:
         if self._closed or monitor != self.active:
@@ -189,8 +219,8 @@ class ScreenshotOverlay:
                            tags=("hover",))
         selection = self._controller.rect
         if selection is not None:
-            text = f"{selection.w} × {selection.h}"
-            canvas.create_text(min(x + 14, monitor.w - 90),
+            text = badge_text(selection)
+            canvas.create_text(min(x + 14, monitor.w - 170),
                                min(y + 14, monitor.h - 24),
                                text=text, anchor="nw", fill="#ffffff",
                                font=("Microsoft YaHei", -14), tags=("hover",))
@@ -312,6 +342,8 @@ class ScreenshotOverlay:
                 self._status = "长截图不支持标注，请先撤销全部标注"
             elif self.on_longshot is None:
                 self._status = "长截图不可用"
+            elif place_panel(self._controller.rect, PANEL_SIZE, self.active) is None:
+                self._status = "选区太大，长截图需要选区外有放控制面板的空间"
             else:
                 selection = self._controller.rect
                 self.close()
@@ -360,6 +392,7 @@ class ScreenshotOverlay:
         self._render()
 
     def _composite(self):
+        self._commit_text_entry()
         selection = self._controller.rect
         box = rect_to_image_box(selection, self.capture.bounds)
         return render(self.capture.image.crop(box), self._undo.items())
@@ -409,11 +442,13 @@ class ScreenshotOverlay:
                                 fill=TOOLBAR_BG, outline="#555555",
                                 tags=("sel",))
         has_annotations = bool(self._undo.items())
+        panel_ok = place_panel(selection, PANEL_SIZE, self.active) is not None
+        self._longshot_enabled = bool(not has_annotations and
+                                      self.on_longshot is not None and panel_ok)
         for name, rect in buttons.items():
             rx, ry = rect.x - self.active.x, rect.y - self.active.y
             selected = name == self._tool
-            enabled = (name != "longshot") or (not has_annotations and
-                                               self.on_longshot is not None)
+            enabled = self._longshot_enabled if name == "longshot" else True
             if selected:
                 fill = "#3a6ea5"
             else:
@@ -441,10 +476,11 @@ class ScreenshotOverlay:
                                ox + annotation.end[0], oy + annotation.end[1],
                                fill=_hex(annotation.color), width=annotation.width,
                                tags=("sel",))
-            ex, ey = ox + annotation.end[0], oy + annotation.end[1]
-            canvas.create_polygon(ex, ey, ex - 10, ey - 3, ex - 3, ey - 10,
-                                  fill=_hex(annotation.color),
-                                  outline=_hex(annotation.color), tags=("sel",))
+            head = arrow_head(annotation.start, annotation.end, annotation.width)
+            canvas.create_polygon(
+                [value for point in head for value in (ox + point[0], oy + point[1])],
+                fill=_hex(annotation.color),
+                outline=_hex(annotation.color), tags=("sel",))
         elif isinstance(annotation, PenAnn):
             if len(annotation.points) >= 2:
                 coords = []

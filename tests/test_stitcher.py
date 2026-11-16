@@ -64,6 +64,16 @@ class StitcherTest(unittest.TestCase):
         self.assertFalse(frames_differ(a, a.copy()))
         self.assertTrue(frames_differ(a, frame(50, 100)))
 
+    def test_scroll_up_by_non_multiple_of_four_ignored(self):
+        result = stitch(frame(0, 700), frame(101, 300))
+        self.assertEqual(result.status, "ignored")
+
+    def test_small_scroll_overlap_below_min_overlap(self):
+        result = stitch(frame(0, 300), frame(290, 300))
+        self.assertEqual(result.status, "appended")
+        self.assertEqual(result.appended_rows, 290)
+        self.assertEqual(result.image.size[1], 590)
+
     def test_common_prefix_rows_detects_sticky_header(self):
         header = Image.new("RGB", (200, 40), (10, 10, 10))
         prev = frame(0, 500).copy()

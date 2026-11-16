@@ -60,22 +60,29 @@ def _score_at(canvas_gray: Image.Image, frame_gray: Image.Image,
 
 def _best_offset(canvas_gray: Image.Image, frame_gray: Image.Image,
                  header: int, min_overlap: int, max_overlap: int):
-    low = max(min_overlap, 1)
     high = min(frame_gray.height - header, max_overlap)
-    if high < low:
+    if high < 1:
         return None, 255.0
     best = None
     best_score = 255.0
-    for d in range(low, high + 1, 4):
+    for d in range(1, min(min_overlap, high) + 1):
+        score = _score_at(canvas_gray, frame_gray, d, header)
+        if score < best_score:
+            best, best_score = d, score
+    for d in range(max(min_overlap, 1), high + 1, 4):
         score = _score_at(canvas_gray, frame_gray, d, header)
         if score < best_score:
             best, best_score = d, score
     if best is not None:
-        for d in range(max(low, best - 4), min(high, best + 4) + 1):
+        for d in range(max(1, best - 4), min(high, best + 4) + 1):
             score = _score_at(canvas_gray, frame_gray, d, header)
             if score < best_score:
                 best, best_score = d, score
     return best, best_score
+
+
+def _row_signature(gray: Image.Image) -> bytes:
+    return gray.resize((1, gray.height), Image.Resampling.BOX).tobytes()
 
 
 def _contained_in_canvas(canvas_gray: Image.Image, frame_gray: Image.Image,
@@ -83,13 +90,25 @@ def _contained_in_canvas(canvas_gray: Image.Image, frame_gray: Image.Image,
     height, frame_height = canvas_gray.height, frame_gray.height
     if frame_height > height:
         return False
-    best = 255.0
-    for y in range(0, height - frame_height + 1, 4):
-        score = _mean_diff(canvas_gray.crop((0, y, canvas_gray.width, y + frame_height)),
-                           frame_gray)
-        if score < best:
-            best = score
-    return best <= threshold
+    last = height - frame_height
+    window = max(1200, frame_height * 4)
+    start = max(0, last - window)
+    canvas_sig = _row_signature(canvas_gray)
+    frame_sig = _row_signature(frame_gray)
+    candidates = []
+    for y in range(start, last + 1):
+        score = 0
+        for row in range(0, frame_height, 4):
+            score += abs(canvas_sig[y + row] - frame_sig[row])
+        candidates.append((score, y))
+    candidates.sort()
+    for _score, y in candidates[:6]:
+        for candidate in range(max(start, y - 2), min(last, y + 2) + 1):
+            if _mean_diff(canvas_gray.crop((0, candidate, canvas_gray.width,
+                                             candidate + frame_height)),
+                          frame_gray) <= threshold:
+                return True
+    return False
 
 
 def _append(canvas: Image.Image, piece: Image.Image) -> Image.Image:

@@ -6,6 +6,8 @@ import queue
 import threading
 from ctypes import wintypes as wt
 
+logger = logging.getLogger("wesnap")
+
 MOD_ALT = 0x0001
 MOD_CONTROL = 0x0002
 MOD_SHIFT = 0x0004
@@ -200,7 +202,7 @@ class MessagePump:
             try:
                 fn()
             except Exception:
-                logging.exception("pump callback failed")
+                logger.exception("pump callback failed")
 
     def _run(self) -> None:
         hinst = kernel32.GetModuleHandleW(None)
@@ -236,7 +238,7 @@ class MessagePump:
             try:
                 handler(int(wparam), int(lparam))
             except Exception:
-                logging.exception("message handler failed")
+                logger.exception("message handler failed")
             return 0
         if msg == WM_CLOSE:
             user32.DestroyWindow(hwnd)

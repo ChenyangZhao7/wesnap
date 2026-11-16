@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
@@ -92,6 +93,10 @@ class App:
 
     def run(self) -> None:
         self.tray.show()
+        if not self.tray.added:
+            self.log.warning("tray icon could not be created")
+            self.root.after(200, lambda: messagebox.showwarning(
+                APP_NAME, "托盘图标创建失败，程序仍在运行；详情见日志。"))
         if not self.hotkey_ok:
             self.log.warning("hotkey %s could not be registered",
                              self.settings["hotkey"])
@@ -305,8 +310,24 @@ class App:
     def _longshot_done(self, image) -> None:
         self.longshot = None
         plan = finish_plan(self.settings["auto_save"], self.settings["auto_copy"])
-        self._store(image, plan)
+        if not self._store(image, plan):
+            path = self._emergency_save(image)
+            if path is not None:
+                self.tray.notify(APP_NAME, f"保存未完成，长截图已存到 {path}")
+            else:
+                self.tray.notify(APP_NAME, "长截图保存失败")
         self._show_pins()
+
+    def _emergency_save(self, image) -> Path | None:
+        try:
+            base = Path(os.environ.get("TEMP") or str(Path.home())) / "WeSnap"
+            base.mkdir(parents=True, exist_ok=True)
+            path = base / f"longshot_{datetime.now():%Y%m%d_%H%M%S}.png"
+            image.save(path, "PNG")
+            return path
+        except OSError:
+            self.log.exception("emergency longshot save failed")
+            return None
 
     def _longshot_cancelled(self) -> None:
         self.longshot = None
