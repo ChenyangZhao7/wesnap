@@ -34,6 +34,32 @@ def finish_plan(auto_save: bool, auto_copy: bool) -> str:
     return "save_as"
 
 
+def hotkey_from_event(keysym: str, state: int) -> str | None:
+    """Translate a Tk key event into a hotkey string, or None if invalid."""
+    if keysym in ("Shift_L", "Shift_R", "Control_L", "Control_R",
+                  "Alt_L", "Alt_R", "Win_L", "Win_R", "Caps_Lock"):
+        return None
+    mods = 0
+    if state & 0x4:
+        mods |= MOD_CONTROL
+    if state & 0x1:
+        mods |= MOD_SHIFT
+    if state & ALT_STATE or state & 0x8:
+        mods |= MOD_ALT
+    vk = None
+    if len(keysym) == 1 and keysym.isalnum():
+        vk = ord(keysym.upper())
+    elif keysym == "Print":
+        vk = 0x2C
+    elif keysym.startswith("F") and keysym[1:].isdigit():
+        vk = 0x70 + int(keysym[1:]) - 1
+    elif keysym == "space":
+        vk = 0x20
+    if vk is None or mods == 0:
+        return None
+    return format_hotkey(mods, vk)
+
+
 def setup_logging() -> logging.Logger:
     base = Path(os.environ.get("APPDATA") or str(Path.home())) / "WeSnap"
     base.mkdir(parents=True, exist_ok=True)
@@ -475,30 +501,11 @@ class App:
         def on_key(event):
             if not self._recording:
                 return
-            keysym = event.keysym
-            if keysym in ("Shift_L", "Shift_R", "Control_L", "Control_R",
-                          "Alt_L", "Alt_R", "Win_L", "Win_R", "Caps_Lock"):
-                return
-            mods = 0
-            if event.state & 0x4:
-                mods |= MOD_CONTROL
-            if event.state & 0x1:
-                mods |= MOD_SHIFT
-            if event.state & ALT_STATE or event.state & 0x8:
-                mods |= MOD_ALT
-            vk = None
-            if len(keysym) == 1 and keysym.isalnum():
-                vk = ord(keysym.upper())
-            elif keysym == "Print":
-                vk = 0x2C
-            elif keysym.startswith("F") and keysym[1:].isdigit():
-                vk = 0x70 + int(keysym[1:]) - 1
-            elif keysym == "space":
-                vk = 0x20
-            if vk is None or mods == 0:
+            recorded = hotkey_from_event(event.keysym, event.state)
+            if recorded is None:
                 hint.config(text="需要至少一个修饰键（Ctrl/Alt/Shift/Win）", fg="#c0392b")
                 return "break"
-            hotkey_var.set(format_hotkey(mods, vk))
+            hotkey_var.set(recorded)
             self._recording = False
             hint.config(text="点「重新录制」后按下新的组合键", fg="#777777")
             return "break"

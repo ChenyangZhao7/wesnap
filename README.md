@@ -49,7 +49,8 @@ Windows 上自用的微信式截图工具：`Alt+A` 唤起、框选缩放、标�
 
 ## 开发
 
-- 全部测试：`python -m unittest discover -s tests -v`
+- 全部测试：`python -m unittest discover -s tests -v`（其中 4 项真实 GUI 事件测试默认跳过）
+- GUI 事件级集成测试（会短暂显示全屏遮罩）：`$env:WESNAP_GUI_TESTS='1'; python -m unittest tests.test_screenshot_flow -v`
 - 设计文档：`docs/superpowers/specs/2026-11-16-wesnap-design.md`
 - 实现计划：`docs/superpowers/plans/2026-11-16-wesnap.md`
 - 第三方依赖只有 Pillow；界面全部 Tk + ctypes 自绘。
