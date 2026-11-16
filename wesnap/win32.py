@@ -140,6 +140,41 @@ kernel32.CloseHandle.restype = wt.BOOL
 ERROR_ALREADY_EXISTS = 183
 _mutexes: list[int] = []
 
+_MONITORENUMPROC = ctypes.WINFUNCTYPE(wt.BOOL, wt.HANDLE, wt.HDC,
+                                      ctypes.POINTER(wt.RECT), wt.LPARAM)
+user32.EnumDisplayMonitors.argtypes = [wt.HDC, ctypes.POINTER(wt.RECT),
+                                       _MONITORENUMPROC, wt.LPARAM]
+user32.EnumDisplayMonitors.restype = wt.BOOL
+user32.GetCursorPos.argtypes = [ctypes.POINTER(wt.POINT)]
+user32.GetCursorPos.restype = wt.BOOL
+
+
+def enum_monitors() -> list[Rect]:
+    rects: list[Rect] = []
+
+    def _collect(hmonitor, hdc, lprc, data):
+        r = lprc.contents
+        rects.append(Rect(r.left, r.top, r.right - r.left, r.bottom - r.top))
+        return True
+
+    user32.EnumDisplayMonitors(None, None, _MONITORENUMPROC(_collect), 0)
+    return rects or [get_virtual_screen_rect()]
+
+
+def get_cursor_pos() -> tuple[int, int]:
+    point = wt.POINT()
+    user32.GetCursorPos(ctypes.byref(point))
+    return point.x, point.y
+
+
+def get_dpi_for_window(hwnd: int) -> int:
+    try:
+        user32.GetDpiForWindow.argtypes = [wt.HWND]
+        user32.GetDpiForWindow.restype = wt.UINT
+        return int(user32.GetDpiForWindow(hwnd)) or 96
+    except (AttributeError, OSError):
+        return 96
+
 
 def set_dpi_aware() -> None:
     """Opt the process into per-monitor DPI awareness (physical pixels)."""
