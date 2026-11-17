@@ -403,8 +403,9 @@ class ScreenshotOverlay:
         if self._closed:
             return
         for monitor, (top, canvas, _original, _photo, _font) in self._views.items():
-            canvas.delete("sel")
-            canvas.delete("hover")
+            for item in canvas.find_all():
+                if "dim" not in canvas.gettags(item):
+                    canvas.delete(item)
             if monitor != self.active:
                 canvas.create_text(monitor.w // 2, monitor.h // 2,
                                    text="请在光标所在屏幕框选",

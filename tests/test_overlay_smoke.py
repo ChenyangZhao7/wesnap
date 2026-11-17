@@ -90,6 +90,15 @@ class OverlayBehaviorTest(unittest.TestCase):
                  and "sel" not in canvas.gettags(item)]
         self.assertEqual(stale, [])
 
+    def test_repeated_moves_do_not_accumulate_canvas_items(self):
+        canvas = self.overlay._active_view()[1]
+        self.overlay._render()
+        baseline = len(canvas.find_all())
+        for _ in range(30):
+            self.overlay._controller.nudge(4, 3)
+            self.overlay._render()
+        self.assertEqual(len(canvas.find_all()), baseline)
+
     def test_double_click_finishes(self):
         event = type("Event", (), {"x": 150, "y": 150})()
         self.overlay._on_press(event, self.overlay.active)
