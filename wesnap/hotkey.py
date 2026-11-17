@@ -100,6 +100,9 @@ kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
 LRESULT = ctypes.c_ssize_t
 WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
+HCURSOR = getattr(wt, "HCURSOR", wt.HANDLE)
+HBRUSH = getattr(wt, "HBRUSH", wt.HANDLE)
+HICON = getattr(wt, "HICON", wt.HANDLE)
 
 
 class WNDCLASSW(ctypes.Structure):
@@ -109,9 +112,9 @@ class WNDCLASSW(ctypes.Structure):
         ("cbClsExtra", ctypes.c_int),
         ("cbWndExtra", ctypes.c_int),
         ("hInstance", wt.HINSTANCE),
-        ("hIcon", wt.HICON),
-        ("hCursor", wt.HCURSOR),
-        ("hbrBackground", wt.HBRUSH),
+        ("hIcon", HICON),
+        ("hCursor", HCURSOR),
+        ("hbrBackground", HBRUSH),
         ("lpszMenuName", wt.LPCWSTR),
         ("lpszClassName", wt.LPCWSTR),
     ]
