@@ -71,6 +71,25 @@ class OverlayBehaviorTest(unittest.TestCase):
         self.overlay._render()
         self.assertFalse(self.overlay._longshot_enabled)
 
+    def test_render_leaves_no_stale_canvas_items(self):
+        canvas = self.overlay._active_view()[1]
+        stale = [item for item in canvas.find_all()
+                 if canvas.type(item) != "image"
+                 and "sel" not in canvas.gettags(item)]
+        self.assertEqual(stale, [])
+
+    def test_moving_selection_leaves_no_stale_items(self):
+        controller = self.overlay._controller
+        controller.press(200, 200)
+        controller.drag(600, 500)
+        controller.release()
+        self.overlay._render()
+        canvas = self.overlay._active_view()[1]
+        stale = [item for item in canvas.find_all()
+                 if canvas.type(item) != "image"
+                 and "sel" not in canvas.gettags(item)]
+        self.assertEqual(stale, [])
+
     def test_double_click_finishes(self):
         event = type("Event", (), {"x": 150, "y": 150})()
         self.overlay._on_press(event, self.overlay.active)

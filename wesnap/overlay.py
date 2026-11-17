@@ -404,6 +404,7 @@ class ScreenshotOverlay:
             return
         for monitor, (top, canvas, _original, _photo, _font) in self._views.items():
             canvas.delete("sel")
+            canvas.delete("hover")
             if monitor != self.active:
                 canvas.create_text(monitor.w // 2, monitor.h // 2,
                                    text="请在光标所在屏幕框选",
@@ -456,7 +457,8 @@ class ScreenshotOverlay:
             canvas.create_rectangle(rx, ry, rx + rect.w, ry + rect.h,
                                     fill=fill, outline="", tags=("sel",))
             draw_icon(canvas, name, Rect(rx, ry, rect.w, rect.h),
-                      color="#dddddd" if enabled else "#666666")
+                      color="#dddddd" if enabled else "#666666",
+                      tags=("sel",))
         if self._status:
             ty = by - 10 if by > 30 else by + bar.h + 24
             canvas.create_text(bx + 4, ty, text=self._status, anchor="sw",
