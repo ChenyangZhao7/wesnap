@@ -1,5 +1,8 @@
 # 微截（WeSnap）
 
+![CI](https://github.com/ChenyangZhao7/wesnap/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 Windows 上自用的微信式截图工具：`Alt+A` 唤起、框选缩放、标注、贴图、滚动长截图，点「完成」自动存桌面并复制到剪贴板。
 
 ## 启动
