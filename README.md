@@ -1,59 +1,65 @@
-# 微截（WeSnap）
+# WeSnap
+
+**English** | [中文](README.zh-CN.md)
 
 ![CI](https://github.com/ChenyangZhao7/wesnap/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Windows 上自用的微信式截图工具：`Alt+A` 唤起、框选缩放、标注、贴图、滚动长截图，点「完成」自动存桌面并复制到剪贴板。
+A WeChat-style screenshot tool for Windows, built for one person's daily use: `Alt+A` to summon, drag to select and resize, annotate, pin to screen, capture long scrolling pages — then "Done" saves to the desktop and copies to the clipboard.
 
-## 启动
+## Starting it
 
-- 双击桌面上的「微截」快捷方式，或双击 `wesnap\微截.vbs`。
-- 程序常驻系统托盘，不弹控制台。首次启动如果 `Alt+A` 被占用，会自动打开设置窗口要求换键。
-- 重新创建桌面快捷方式：`python tools\install_shortcut.py`
-- 重新生成图标：`python tools\make_icon.py`
+- Double-click the "微截" shortcut on the desktop, or `wesnap\微截.vbs`.
+- It lives in the system tray and never opens a console. On first launch, if `Alt+A` is already taken, a settings window opens and asks for another key.
+- Recreate the desktop shortcut: `python tools\install_shortcut.py`
+- Regenerate the icon: `python tools\make_icon.py`
 
-运行环境：已安装 Python 3.14 与 Pillow 13。本机已装好，无需重复安装。
+Requires Python 3.14 and Pillow 13, both already installed on this machine.
 
-## 用法
+## Usage
 
-按 `Alt+A`（可在设置里改）进入截图：
+Press `Alt+A` (configurable) to start:
 
-- 拖拽框选；拖动选区四边/四角的 8 个手柄缩放；在选区内部拖动可整体移动；方向键微调 1px，`Shift+方向键` 10px。
-- 工具栏：`[矩形] [椭圆] [箭头] [画笔] [文字] [马赛克] [撤销] | [长截图] [贴图] | [保存] [✓ 完成] [✕ 取消]`。
-- 再点一次当前工具 = 退出标注模式，回到「拖动移动选区」。
-- 文字：点选位置后输入，`Enter` 确认，`Esc` 取消；点界面其他任意位置也会自动提交；支持中文输入法。
-- 「完成」：按设置保存到保存目录并复制到剪贴板；两个开关都关时改为弹「另存为」，避免丢图。`Enter`、双击选区、点「完成」都等价。
-- 「保存」：另存为，不写剪贴板。
-- 「贴图」：把截图钉在屏幕上；拖动移动，拖边缘缩放，滚轮缩放，右键菜单（复制 / 另存为 / 关闭），`Esc` 或双击关闭。
-- 长截图：框选区域后点「长截图」，鼠标放在选区里滚动滚轮翻页，选区外的控制面板实时显示拼接预览；点「完成」保存并复制。选区外必须留得下控制面板，否则按钮置灰；有标注时需先撤销全部标注才能长截图；单张长图最高 30000px。
-- `Esc` / 鼠标右键取消；`Enter` 完成；`Ctrl+Z` 撤销。
+- Drag to select; drag any of the 8 handles on the edges and corners to resize; drag inside the selection to move it; arrow keys nudge by 1px, `Shift+arrow` by 10px.
+- Toolbar: `[Rectangle] [Ellipse] [Arrow] [Brush] [Text] [Mosaic] [Undo] | [Long screenshot] [Pin] | [Save] [✓ Done] [✕ Cancel]`.
+- Click the active tool again to leave annotation mode and go back to moving the selection.
+- Text: click where it goes, type, `Enter` confirms, `Esc` cancels; clicking anywhere else also commits. Chinese input methods work.
+- "Done": saves to the configured folder and copies to the clipboard; if both switches are off it falls back to "Save as" so the image is not lost. `Enter`, double-clicking the selection and the "Done" button are equivalent.
+- "Save": save as, without touching the clipboard.
+- "Pin": sticks the screenshot to the screen; drag to move, drag an edge to resize, scroll to zoom, right-click for copy / save as / close, `Esc` or double-click to close.
+- Long screenshot: select a region, click "Long screenshot", then scroll the wheel inside the selection to page through. A preview panel outside the selection updates live. "Done" saves and copies. The panel needs room outside the selection or the button stays greyed out; annotations must all be undone first; a single image is capped at 30000px.
+- `Esc` or right-click cancels; `Enter` finishes; `Ctrl+Z` undoes.
 
-托盘：左键单击 = 截图；右键菜单 = 截图 / 设置… / 开机自启 / 退出。
+Tray: left click takes a screenshot; right click offers screenshot / settings / start at login / quit.
 
-## 文件位置
+## File locations
 
-- 配置：`%APPDATA%\WeSnap\settings.json`
-- 日志：`%APPDATA%\WeSnap\wesnap.log`（超过 1MB 滚动为 `wesnap.1.log`）
-- 默认保存目录：桌面，文件名 `Screenshot_yyyyMMdd_HHmmss.png`，重名追加 `_2`、`_3`。
+- Settings: `%APPDATA%\WeSnap\settings.json`
+- Log: `%APPDATA%\WeSnap\wesnap.log` (rolls to `wesnap.1.log` past 1MB)
+- Default folder: the desktop, named `Screenshot_yyyyMMdd_HHmmss.png`, with `_2`, `_3` appended on collisions.
 
-## 设置
+## Settings
 
-托盘右键 → 设置…：录制新快捷键、选择保存目录、自动保存 / 自动复制 / 开机自启。快捷键冲突时会提示并保留窗口，不会假装成功。
+Tray → Settings: record a new hotkey, choose the save folder, toggle auto-save / auto-copy / start at login. When a hotkey conflicts it says so and keeps the window open instead of pretending it worked.
 
-## 为什么没有 exe
+## Why there is no exe
 
-本机开启了 Smart App Control，会拦截所有未签名 exe。程序由已签名的 `pythonw.exe` 运行 Python 代码，所以交付形态是「程序文件夹 + 启动器/快捷方式」。关闭 Smart App Control 是不可逆的，也没有必要。
+Smart App Control is enabled on this machine and blocks every unsigned exe. The program runs Python through the signed `pythonw.exe`, so it ships as a folder plus a launcher and shortcut. Turning Smart App Control off is irreversible and unnecessary.
 
-## 已知限制
+## Known limitations
 
-- 跨显示器框选不支持：选区限定在按下热键时光标所在的那块屏幕。
-- 长截图需要选区外有摆放控制面板的空间；单张长图最高 30000px；固定表头/侧边栏的页面可能出现重复条带或错位（所有滚轮拼接工具的通病）。
-- 标注颜色/线宽固定为微信红 2px（数据模型已预留，后续可加调色板）。
+- Cross-monitor selection is not supported: the selection stays on the monitor the cursor was on when the hotkey fired.
+- Long screenshots need space outside the selection for the control panel; a single image is capped at 30000px; pages with fixed headers or sidebars may show repeated strips or misalignment (a weakness of every scroll-stitching tool).
+- Annotation colour and width are fixed at WeChat red, 2px (the data model reserves fields for a palette later).
 
-## 开发
+## Development
 
-- 全部测试：`python -m unittest discover -s tests -v`（其中 4 项真实 GUI 事件测试默认跳过）
-- GUI 事件级集成测试（会短暂显示全屏遮罩）：`$env:WESNAP_GUI_TESTS='1'; python -m unittest tests.test_screenshot_flow -v`
-- 设计文档：`docs/superpowers/specs/2026-11-16-wesnap-design.md`
-- 实现计划：`docs/superpowers/plans/2026-11-16-wesnap.md`
-- 第三方依赖只有 Pillow；界面全部 Tk + ctypes 自绘。
+- All tests: `python -m unittest discover -s tests -v` (four real GUI event tests are skipped by default)
+- GUI-level integration tests (briefly shows a full-screen overlay): `$env:WESNAP_GUI_TESTS='1'; python -m unittest tests.test_screenshot_flow -v`
+- Design doc: `docs/superpowers/specs/2026-11-16-wesnap-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-11-16-wesnap.md`
+- The only third-party dependency is Pillow; the entire UI is Tk + ctypes.
+
+## License
+
+MIT
